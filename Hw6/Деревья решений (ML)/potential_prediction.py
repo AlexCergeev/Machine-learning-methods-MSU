@@ -1,6 +1,6 @@
 import os
 
-from sklearn.tree import DecisionTreeRegressor
+from sklearn.ensemble import ExtraTreesRegressor
 from sklearn.pipeline import Pipeline
 
 import numpy as np
@@ -36,7 +36,18 @@ class PotentialTransformer:
         :param x: list of potential's 2d matrices
         :return: transformed potentials (list of 1d vectors)
         """
-        return x.reshape((x.shape[0], -1))
+        mass = np.zeros((x.shape[0], 8))
+        for i, el in enumerate(x):
+            mass[i][0] = el.mean()
+            mass[i][1] = np.sum(np.absolute(np.diff(np.trapz(el))))
+            mass[i][2] = el.mean() / np.trapz(el).mean(where=np.trapz(el) > 0)
+            mass[i][3] = np.absolute(np.diff(el, n=2)).sum()
+            mass[i][4] = np.sum(np.absolute(np.diff(np.trapz(el)))) / el.sum() / np.trapz(el).mean(where=np.trapz(el) > 0)
+            mass[i][5] = np.trapz(el.mean(axis=1)) / el.sum() * np.trapz(el).mean(where=np.trapz(el) > 0)
+            mass[i][6] = np.absolute(np.diff(el, n=2)).sum() / el.sum() / np.trapz(el).mean(where=np.trapz(el) > 0)
+            mass[i][7] = np.trapz(el.mean(axis=1)) / el.sum() * np.trapz(el).mean(where=np.trapz(el) > 0) * np.absolute(
+                np.diff(el, n=2)).sum()
+        return np.array(mass)
 
 def load_dataset(data_dir):
     """
@@ -61,7 +72,11 @@ def train_model_and_predict(train_dir, test_dir):
     _, X_train, Y_train = load_dataset(train_dir)
     test_files, X_test, _ = load_dataset(test_dir)
     # it's suggested to modify only the following line of this function
-    regressor = Pipeline([('vectorizer', PotentialTransformer()), ('decision_tree', DecisionTreeRegressor())])
+    regressor = Pipeline([('vectorizer', PotentialTransformer()),
+                          ('decision_tree', ExtraTreesRegressor(n_estimators=3000,
+                                                                max_depth=None,
+                                                                random_state=13,
+                                                                n_jobs=-1))])
     regressor.fit(X_train, Y_train)
     predictions = regressor.predict(X_test)
     return {file: value for file, value in zip(test_files, predictions)}
