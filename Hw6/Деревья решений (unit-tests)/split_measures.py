@@ -22,5 +22,13 @@ def evaluate_measures(sample):
     }
 
     """
-    measures = {'gini': float(len(sample)), 'entropy': float(sum(sample)), 'error': float(max(sample))}
+    sample = np.array(sample)
+    _, counts = np.unique(sample, return_counts=True)
+    p = counts / sample.size
+    gini = 1 - (p * p).sum()
+    entropy = (-p * np.log(p)).sum()
+    error = 1 - p.max()
+
+
+    measures = {'gini': float(gini), 'entropy': float(entropy), 'error': float(error)}
     return measures
